@@ -69,6 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   themeProvider.themeMode != ThemeMode.dark,
                 );
               },
+              tooltip: themeProvider.themeMode == ThemeMode.dark
+                  ? 'Modo claro'
+                  : 'Modo oscuro',
             ),
           ),
         ],

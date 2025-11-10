@@ -4,7 +4,7 @@ class UserModel {
   final String uid;
   final String displayName;
   final String email;
-  final String? photoUrl;
+  final String? photoURL;
   final String bio;
   final List<String> skills;
   final Timestamp createdAt;
@@ -15,7 +15,7 @@ class UserModel {
     required this.uid,
     required this.displayName,
     required this.email,
-    this.photoUrl,
+    this.photoURL,
     this.bio = '',
     this.skills = const [],
     required this.createdAt,
@@ -30,7 +30,7 @@ class UserModel {
       uid: doc.id,
       displayName: data['displayName'] ?? '',
       email: data['email'] ?? '',
-      photoUrl: data['photoUrl'],
+      photoURL: data['photoURL'] ?? data['photoUrl'],
       bio: data['bio'] ?? '',
       skills: List<String>.from(data['skills'] ?? []),
       createdAt: data['createdAt'] ?? Timestamp.now(),
@@ -44,7 +44,7 @@ class UserModel {
       'uid': uid,
       'displayName': displayName,
       'email': email,
-      'photoUrl': photoUrl,
+      'photoURL': photoURL,
       'bio': bio,
       'skills': skills,
       'createdAt': createdAt,
@@ -56,7 +56,7 @@ class UserModel {
   UserModel copyWith({
     String? displayName,
     String? email,
-    String? photoUrl,
+    String? photoURL,
     String? bio,
     List<String>? skills,
     Timestamp? updatedAt,
@@ -66,12 +66,19 @@ class UserModel {
       uid: uid,
       displayName: displayName ?? this.displayName,
       email: email ?? this.email,
-      photoUrl: photoUrl ?? this.photoUrl,
+      photoURL: photoURL ?? this.photoURL,
       bio: bio ?? this.bio,
       skills: skills ?? this.skills,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       followersCount: followersCount ?? this.followersCount,
     );
+  }
+
+  String getPhotoURL() {
+    if (photoURL != null && photoURL!.isNotEmpty) {
+      return photoURL!;
+    }
+    return 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(displayName)}&background=random&size=200&bold=true';
   }
 }

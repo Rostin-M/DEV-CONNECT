@@ -82,14 +82,18 @@ class AuthProvider extends ChangeNotifier {
   ) async {
     final userRef = _firestore.collection('users').doc(user.uid);
 
+    final defaultAvatar =
+        'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=random&size=200&bold=true';
+
     final userData = {
       'uid': user.uid,
       'displayName': name,
       'email': email,
-      'photoUrl': null,
+      'photoURL': defaultAvatar,
       'bio': "",
       'skills': [],
       'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
       'followersCount': 0,
     };
 
@@ -114,11 +118,38 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> isEmailRegistered(String email) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email.trim().toLowerCase())
+          .limit(1)
+          .get();
+
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error al verificar email: $e');
+      return false;
+    }
+  }
+
   Future<bool> sendPasswordReset(String email) async {
     _setLoading(true);
     _setError(null);
+
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      final emailLowerCase = email.trim().toLowerCase();
+      final isRegistered = await isEmailRegistered(emailLowerCase);
+
+      if (!isRegistered) {
+        _setError(
+          'Este correo electrónico no está registrado. Por favor, verifica e intenta nuevamente.',
+        );
+        _setLoading(false);
+        return false;
+      }
+
+      await _auth.sendPasswordResetEmail(email: emailLowerCase);
       _setLoading(false);
       return true;
     } on FirebaseAuthException catch (e) {
@@ -126,7 +157,7 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return false;
     } catch (e) {
-      _setError("Ocurrió un error inesperado.");
+      _setError("Ocurrió un error inesperado. Por favor, intenta nuevamente.");
       _setLoading(false);
       return false;
     }
@@ -152,6 +183,12 @@ class AuthProvider extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      await _updateUserDataInProjects(_user!.uid, {
+        'authorName': newDisplayName,
+      });
+
+      await _updateUserDataInChats(_user!.uid, {'displayName': newDisplayName});
+
       await _user!.reload();
       _user = _auth.currentUser;
 
@@ -175,9 +212,15 @@ class AuthProvider extends ChangeNotifier {
       await _user!.updatePhotoURL(newPhotoUrl);
 
       await _firestore.collection('users').doc(_user!.uid).update({
-        'photoUrl': newPhotoUrl,
+        'photoURL': newPhotoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      await _updateUserDataInProjects(_user!.uid, {
+        'authorAvatar': newPhotoUrl,
+      });
+
+      await _updateUserDataInChats(_user!.uid, {'photoURL': newPhotoUrl});
 
       await _user!.reload();
       _user = _auth.currentUser;
@@ -201,13 +244,31 @@ class AuthProvider extends ChangeNotifier {
     try {
       data['updatedAt'] = FieldValue.serverTimestamp();
 
+      if (data.containsKey('photoUrl')) {
+        data['photoURL'] = data['photoUrl'];
+        data.remove('photoUrl');
+      }
+
       await _firestore.collection('users').doc(_user!.uid).update(data);
 
       if (data.containsKey('displayName')) {
         await _user!.updateDisplayName(data['displayName']);
+        await _updateUserDataInProjects(_user!.uid, {
+          'authorName': data['displayName'],
+        });
+        await _updateUserDataInChats(_user!.uid, {
+          'displayName': data['displayName'],
+        });
       }
-      if (data.containsKey('photoUrl')) {
-        await _user!.updatePhotoURL(data['photoUrl']);
+
+      if (data.containsKey('photoURL')) {
+        await _user!.updatePhotoURL(data['photoURL']);
+        await _updateUserDataInProjects(_user!.uid, {
+          'authorAvatar': data['photoURL'],
+        });
+        await _updateUserDataInChats(_user!.uid, {
+          'photoURL': data['photoURL'],
+        });
       }
 
       await _user!.reload();
@@ -220,6 +281,49 @@ class AuthProvider extends ChangeNotifier {
       _setError('Error al actualizar el perfil: $e');
       _setLoading(false);
       return false;
+    }
+  }
+
+  Future<void> _updateUserDataInProjects(
+    String userId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      final projectsSnapshot = await _firestore
+          .collection('projects')
+          .where('authorId', isEqualTo: userId)
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in projectsSnapshot.docs) {
+        batch.update(doc.reference, updates);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error actualizando proyectos: $e');
+    }
+  }
+
+  Future<void> _updateUserDataInChats(
+    String userId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      final chatsSnapshot = await _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in chatsSnapshot.docs) {
+        batch.update(doc.reference, {
+          'participantsData.$userId.${updates.keys.first}':
+              updates.values.first,
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error actualizando chats: $e');
     }
   }
 
@@ -237,6 +341,12 @@ class AuthProvider extends ChangeNotifier {
         return 'La contraseña es demasiado débil.';
       case 'user-disabled':
         return 'Este usuario ha sido deshabilitado.';
+      case 'too-many-requests':
+        return 'Demasiados intentos. Por favor, intenta más tarde.';
+      case 'operation-not-allowed':
+        return 'Esta operación no está permitida.';
+      case 'network-request-failed':
+        return 'Error de red. Verifica tu conexión a internet.';
       default:
         return 'Error de autenticación: $code';
     }

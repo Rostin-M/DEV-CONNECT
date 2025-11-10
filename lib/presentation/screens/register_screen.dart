@@ -77,6 +77,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   themeProvider.themeMode != ThemeMode.dark,
                 );
               },
+              tooltip: themeProvider.themeMode == ThemeMode.dark
+                  ? 'Modo claro'
+                  : 'Modo oscuro',
             ),
           ),
         ],

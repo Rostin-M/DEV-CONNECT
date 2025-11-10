@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:dev_connect/presentation/screens/home_screen.dart';
+import 'package:dev_connect/presentation/screens/search_screen.dart';
 import 'package:dev_connect/presentation/screens/profile_view_screen.dart';
+import 'package:dev_connect/presentation/screens/chats_screen.dart';
+import 'package:dev_connect/presentation/screens/notifications_screen.dart';
+import 'package:dev_connect/providers/auth_provider.dart';
+import 'package:dev_connect/services/notification_service.dart';
 import 'package:dev_connect/themes/app_theme.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -12,19 +18,25 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _selectedIndex = 0;
+  final NotificationService _notificationService = NotificationService();
 
   static final List<Widget> _mainScreenOptions = <Widget>[
     const HomeScreen(),
-    const Center(child: Text('Pantalla de Búsqueda')),
-    const Center(
-      child: Text('Pantalla de Notificaciones'),
-    ),
+    const SearchScreen(),
+    const Center(child: Text('Pantalla de Crear')),
+    const ChatsScreen(),
+    const NotificationsScreen(),
     const ProfileViewScreen(),
   ];
 
   final PageController _pageController = PageController(initialPage: 0);
 
   void _onItemTapped(int index) {
+    if (index == 2) {
+      Navigator.pushNamed(context, '/create_project');
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
@@ -43,80 +55,139 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUserId = authProvider.user?.uid ?? '';
+
     return Scaffold(
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: _mainScreenOptions,
       ),
-      floatingActionButton: _buildCustomCreateButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomAppBar(),
+      bottomNavigationBar: _buildModernBottomBar(currentUserId),
     );
   }
 
-  Widget _buildCustomCreateButton() {
+  Widget _buildModernBottomBar(String currentUserId) {
     return Container(
-      height: 56.0,
-      width: 56.0,
-      margin: const EdgeInsets.only(top: 8),
+      height: 70,
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor,
-        shape: BoxShape.circle,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1E1E1E)
+            : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.pushNamed(context, '/create_project');
-          },
-          customBorder: const CircleBorder(),
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(Icons.home_rounded, 'Inicio', 0, currentUserId),
+          _buildNavItem(Icons.search_rounded, 'Buscar', 1, currentUserId),
+          _buildNavItem(
+            Icons.add_circle_outline_rounded,
+            'Crear',
+            2,
+            currentUserId,
+          ),
+          _buildNavItem(Icons.chat_bubble_rounded, 'Chats', 3, currentUserId),
+          _buildNavItem(
+            Icons.notifications_rounded,
+            'Alertas',
+            4,
+            currentUserId,
+          ),
+          _buildNavItem(Icons.person_rounded, 'Perfil', 5, currentUserId),
+        ],
       ),
     );
   }
 
-  Widget _buildBottomAppBar() {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8.0,
-      elevation: 8.0,
-      height: 65.0,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildBottomNavItem(Icons.home_outlined, Icons.home, 0),
-                const SizedBox(width: 16),
-                _buildBottomNavItem(Icons.search_outlined, Icons.search, 1),
-              ],
-            ),
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    int index,
+    String currentUserId,
+  ) {
+    final isSelected = _selectedIndex == index;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-            const SizedBox(width: 56),
+    final iconColor = isSelected
+        ? AppTheme.primaryColor
+        : (isDarkMode ? Colors.grey[500] : Colors.grey[600]);
 
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildBottomNavItem(
-                  Icons.notifications_outlined,
-                  Icons.notifications,
-                  2,
-                ),
-                const SizedBox(width: 16),
-                _buildBottomNavItem(Icons.person_outline, Icons.person, 3),
-              ],
+    final textColor = isSelected
+        ? AppTheme.primaryColor
+        : (isDarkMode ? Colors.grey[500] : Colors.grey[600]);
+
+    Widget iconWidget = Icon(icon, color: iconColor, size: 26);
+
+    if (index == 3 && currentUserId.isNotEmpty) {
+      return StreamBuilder<int>(
+        stream: _notificationService.getUnreadChatsCount(currentUserId),
+        builder: (context, snapshot) {
+          final count = snapshot.data ?? 0;
+          return _buildNavItemContent(
+            count > 0 ? _buildBadgeIcon(iconWidget, count) : iconWidget,
+            label,
+            index,
+            iconColor,
+            textColor,
+          );
+        },
+      );
+    } else if (index == 4 && currentUserId.isNotEmpty) {
+      return StreamBuilder<int>(
+        stream: _notificationService.getUnreadNotificationsCount(currentUserId),
+        builder: (context, snapshot) {
+          final count = snapshot.data ?? 0;
+          return _buildNavItemContent(
+            count > 0 ? _buildBadgeIcon(iconWidget, count) : iconWidget,
+            label,
+            index,
+            iconColor,
+            textColor,
+          );
+        },
+      );
+    }
+
+    return _buildNavItemContent(iconWidget, label, index, iconColor, textColor);
+  }
+
+  Widget _buildNavItemContent(
+    Widget icon,
+    String label,
+    int index,
+    Color? iconColor,
+    Color? textColor,
+  ) {
+    final isSelected = _selectedIndex == index;
+
+    return InkWell(
+      onTap: () => _onItemTapped(index),
+      splashColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+      highlightColor: AppTheme.primaryColor.withValues(alpha: 0.05),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icon,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -124,32 +195,33 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  Widget _buildBottomNavItem(
-    IconData outlineIcon,
-    IconData filledIcon,
-    int index,
-  ) {
-    final isSelected = _selectedIndex == index;
-    final color = isSelected ? AppTheme.primaryColor : AppTheme.neutralColor;
-
-    return InkWell(
-      onTap: () => _onItemTapped(index),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, animation) {
-            return ScaleTransition(scale: animation, child: child);
-          },
-          child: Icon(
-            isSelected ? filledIcon : outlineIcon,
-            key: ValueKey<bool>(isSelected),
-            color: color,
-            size: 28,
+  Widget _buildBadgeIcon(Widget icon, int count) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        Positioned(
+          right: -8,
+          top: -4,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+            child: Text(
+              count > 99 ? '99+' : count.toString(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

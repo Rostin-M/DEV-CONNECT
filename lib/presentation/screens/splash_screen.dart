@@ -37,21 +37,17 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
     return Scaffold(
       appBar: AppBar(
         actions: [
           IconButton(
-            icon: Icon(
-              themeProvider.themeMode == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
+            icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
             onPressed: () {
-              themeProvider.toggleTheme(
-                themeProvider.themeMode != ThemeMode.dark,
-              );
+              themeProvider.toggleTheme(!isDarkMode);
             },
+            tooltip: isDarkMode ? 'Modo claro' : 'Modo oscuro',
           ),
           const SizedBox(width: 10),
         ],

@@ -189,4 +189,46 @@ class ProjectsProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> deleteProject(String projectId, String userId) async {
+    try {
+      final projectDoc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .get();
+
+      if (!projectDoc.exists) {
+        throw Exception('Proyecto no encontrado');
+      }
+
+      final projectData = projectDoc.data() as Map<String, dynamic>;
+
+      if (projectData['authorId'] != userId) {
+        throw Exception('No tienes permiso para eliminar este proyecto');
+      }
+
+      final screenshots = projectData['screenshots'] as List<dynamic>? ?? [];
+      for (var screenshot in screenshots) {
+        final publicId = screenshot['publicId'] as String?;
+        if (publicId != null && publicId.isNotEmpty) {
+          try {
+            await _cloudinaryService.deleteImage(publicId);
+          } catch (e) {
+            debugPrint('Error al eliminar imagen de Cloudinary: $e');
+          }
+        }
+      }
+
+      await _firestore.collection('projects').doc(projectId).delete();
+
+      _projects.removeWhere((p) => p.id == projectId);
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      _error = 'Error al eliminar el proyecto: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
 }

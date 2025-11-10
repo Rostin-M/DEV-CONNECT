@@ -87,7 +87,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           _displayNameController.text = profile.displayName;
           _bioController.text = profile.bio;
           _skills = List.from(profile.skills);
-          _currentPhotoUrl = profile.photoUrl;
+          _currentPhotoUrl = profile.photoURL;
         });
       }
     } catch (e) {
@@ -287,12 +287,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           onPressed: _cancelChanges,
         ),
         actions: [
-          Switch(
-            value: isDarkMode,
-            onChanged: (value) {
-              themeProvider.toggleTheme(value);
+          IconButton(
+            icon: Icon(
+              isDarkMode ? Icons.light_mode : Icons.dark_mode,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            onPressed: () {
+              themeProvider.toggleTheme(!isDarkMode);
             },
-            activeThumbColor: Theme.of(context).colorScheme.secondary,
+            tooltip: isDarkMode ? 'Modo claro' : 'Modo oscuro',
           ),
           const SizedBox(width: 8),
         ],
@@ -583,15 +586,32 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     required String value,
     required IconData icon,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return TextFormField(
       initialValue: value,
       enabled: false,
+      style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        labelStyle: TextStyle(
+          color: isDarkMode ? Colors.white70 : Colors.black87,
+        ),
+        prefixIcon: Icon(
+          icon,
+          color: isDarkMode ? Colors.white60 : Colors.black54,
+        ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey[200],
+        fillColor: isDarkMode
+            ? Colors.grey[800]?.withValues(alpha: 0.3)
+            : Colors.grey[200],
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
+          ),
+        ),
       ),
     );
   }
@@ -682,7 +702,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           label: Text(skill),
           deleteIcon: const Icon(Icons.close, size: 18),
           onDeleted: () => _removeSkill(skill),
-          backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+          backgroundColor: Theme.of(
+            context,
+          ).primaryColor.withValues(alpha: 0.1),
           labelStyle: TextStyle(
             color: Theme.of(context).primaryColor,
             fontWeight: FontWeight.w500,

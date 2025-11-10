@@ -137,6 +137,43 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
       return;
     }
 
+    String authorName = 'Usuario Anónimo';
+    String authorAvatar = ImageConstants.getDefaultAvatar(null);
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        authorName =
+            userData['displayName'] ??
+            currentUser.displayName ??
+            'Usuario Anónimo';
+        authorAvatar =
+            userData['photoURL'] ??
+            currentUser.photoURL ??
+            ImageConstants.getDefaultAvatar(authorName);
+      } else {
+        authorName =
+            currentUser.displayName ??
+            currentUser.email?.split('@')[0] ??
+            'Usuario Anónimo';
+        authorAvatar =
+            currentUser.photoURL ?? ImageConstants.getDefaultAvatar(authorName);
+      }
+    } catch (e) {
+      debugPrint('Error al obtener datos del usuario: $e');
+      authorName =
+          currentUser.displayName ??
+          currentUser.email?.split('@')[0] ??
+          'Usuario Anónimo';
+      authorAvatar =
+          currentUser.photoURL ?? ImageConstants.getDefaultAvatar(authorName);
+    }
+
     final projectModel = ProjectModel(
       id: '',
       title: _titleController.text.trim(),
@@ -149,10 +186,8 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
           .map((s) => {'caption': s.caption, 'url': '', 'publicId': ''})
           .toList(),
       authorId: currentUser.uid,
-      authorName: currentUser.displayName ?? 'Usuario Anónimo',
-      authorAvatar:
-          currentUser.photoURL ??
-          ImageConstants.getDefaultAvatar(currentUser.displayName),
+      authorName: authorName,
+      authorAvatar: authorAvatar,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       likes: const [],
@@ -206,6 +241,7 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -215,16 +251,12 @@ class _ProjectCreateScreenState extends State<ProjectCreateScreen> {
         ),
         centerTitle: true,
         actions: [
-          Switch(
-            value: themeProvider.themeMode == ThemeMode.dark,
-            onChanged: (value) {
-              themeProvider.toggleTheme(value);
+          IconButton(
+            icon: Icon(isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              themeProvider.toggleTheme(!isDarkMode);
             },
-            activeThumbColor: Theme.of(context).colorScheme.secondary,
-            inactiveTrackColor: Theme.of(
-              context,
-            ).dividerColor.withValues(alpha: 0.5),
-            inactiveThumbColor: Theme.of(context).hintColor,
+            tooltip: isDarkMode ? 'Modo claro' : 'Modo oscuro',
           ),
           const SizedBox(width: 10),
         ],
