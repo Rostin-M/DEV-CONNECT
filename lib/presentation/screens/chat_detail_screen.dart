@@ -74,7 +74,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
       _messageController.clear();
 
-      // Scroll to bottom after sending
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0,

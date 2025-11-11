@@ -170,9 +170,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       await _notificationService.markAsRead(notification.id);
                     }
 
-                    final notifData = data['data'] as Map<String, dynamic>?;
-                    if (notifData != null) {
-                      _handleNotificationTap(context, type, notifData);
+                    if (data.containsKey('chatId') ||
+                        data.containsKey('projectId') ||
+                        data.containsKey('userId')) {
+                      _handleNotificationTap(context, type, data);
+                    } else {
+                      _showErrorSnackBar(
+                        context,
+                        'No hay información suficiente para abrir esta notificación',
+                      );
                     }
                   },
                 ),
@@ -194,6 +200,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Colors.green;
       case 'message':
         return AppTheme.primaryColor;
+      case 'new_project':
+        return Colors.orange;
       default:
         return Colors.grey;
     }
@@ -209,6 +217,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.person_add;
       case 'message':
         return Icons.message;
+      case 'new_project':
+        return Icons.add_box;
       default:
         return Icons.notifications;
     }
@@ -222,28 +232,66 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (type) {
       case 'like':
       case 'comment':
-        if (data['projectId'] != null) {
-          Navigator.pushNamed(
-            context,
-            '/project_detail',
-            arguments: data['projectId'],
-          );
+      case 'new_project':
+        final projectId = data['projectId'];
+        if (projectId != null && projectId is String) {
+          Navigator.pushNamed(context, '/project_detail', arguments: projectId);
+        } else {
+          _showErrorSnackBar(context, 'No se pudo abrir el proyecto');
         }
         break;
       case 'follow':
-        if (data['userId'] != null) {
-          Navigator.pushNamed(
-            context,
-            '/profile_view',
-            arguments: data['userId'],
-          );
+        final userId = data['userId'];
+        if (userId != null && userId is String) {
+          Navigator.pushNamed(context, '/profile_view', arguments: userId);
+        } else {
+          _showErrorSnackBar(context, 'No se pudo abrir el perfil');
         }
         break;
       case 'message':
-        if (data['chatId'] != null) {
-          Navigator.pushNamed(context, '/chat_detail', arguments: data);
+        final chatId = data['chatId'];
+        final otherUserId = data['otherUserId'];
+        final otherUserName = data['otherUserName'];
+        final otherUserAvatar = data['otherUserAvatar'];
+
+        debugPrint('Datos de notificación de mensaje:');
+        debugPrint('chatId: $chatId (${chatId.runtimeType})');
+        debugPrint('otherUserId: $otherUserId (${otherUserId.runtimeType})');
+        debugPrint(
+          'otherUserName: $otherUserName (${otherUserName.runtimeType})',
+        );
+        debugPrint(
+          'otherUserAvatar: $otherUserAvatar (${otherUserAvatar.runtimeType})',
+        );
+
+        if (chatId != null && otherUserId != null) {
+          Navigator.pushNamed(
+            context,
+            '/chat_detail',
+            arguments: {
+              'chatId': chatId.toString(),
+              'otherUserId': otherUserId.toString(),
+              'otherUserName': (otherUserName ?? 'Usuario').toString(),
+              'otherUserAvatar': (otherUserAvatar ?? '').toString(),
+            },
+          );
+        } else {
+          _showErrorSnackBar(
+            context,
+            'No se pudo abrir el chat. Faltan datos: chatId=${chatId != null}, otherUserId=${otherUserId != null}',
+          );
         }
         break;
     }
+  }
+
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 }

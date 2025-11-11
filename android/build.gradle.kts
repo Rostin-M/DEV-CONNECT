@@ -14,7 +14,31 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+    
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            project.extensions.configure<com.android.build.gradle.BaseExtension> {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                    isCoreLibraryDesugaringEnabled = true
+                }
+                
+                defaultConfig {
+                    multiDexEnabled = true
+                }
+            }
+        }
+        
+        // Agregar dependencia de desugaring a todos los subproyectos
+        if (project.hasProperty("android")) {
+            dependencies {
+                add("coreLibraryDesugaring", "com.android.tools:desugar_jdk_libs:2.0.4")
+            }
+        }
+    }
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

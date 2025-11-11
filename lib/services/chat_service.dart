@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dev_connect/data/models/chat_model.dart';
 import 'package:dev_connect/data/models/message_model.dart';
+import 'package:dev_connect/services/notification_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   Future<String> getOrCreateChat(
     String currentUserId,
@@ -82,6 +84,15 @@ class ChatService {
       'lastMessageSender': senderId,
       'unreadCount.$receiverId': FieldValue.increment(1),
     });
+
+    await _notificationService.notifyNewMessage(
+      recipientId: receiverId,
+      senderId: senderId,
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      chatId: chatId,
+      messagePreview: text.length > 50 ? '${text.substring(0, 50)}...' : text,
+    );
   }
 
   Stream<List<MessageModel>> getChatMessages(String chatId) {

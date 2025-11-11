@@ -9,6 +9,7 @@ import 'firebase_options.dart';
 import 'package:dev_connect/providers/auth_provider.dart';
 import 'package:dev_connect/providers/theme_provider.dart';
 import 'package:dev_connect/providers/projects_provider.dart';
+import 'package:dev_connect/services/fcm_service.dart';
 
 import 'package:dev_connect/themes/app_theme.dart';
 
@@ -25,6 +26,8 @@ import 'package:dev_connect/presentation/screens/chat_detail_screen.dart';
 import 'package:dev_connect/presentation/screens/search_screen.dart';
 import 'package:dev_connect/presentation/screens/notifications_screen.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -37,6 +40,13 @@ void main() async {
     appleProvider: AppleProvider.deviceCheck,
     webProvider: ReCaptchaV3Provider('recaptcha-v3-site-key'),
   );
+
+  final fcmService = FCMService();
+  await fcmService.initialize();
+
+  fcmService.onNotificationTap = (data) {
+    _handleNotificationNavigation(data);
+  };
 
   final themeProvider = ThemeProvider();
   await themeProvider.loadTheme();
@@ -63,6 +73,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'DevConnect',
           debugShowCheckedModeBanner: false,
+          navigatorKey: navigatorKey,
 
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
@@ -130,5 +141,58 @@ class MyApp extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+void _handleNotificationNavigation(Map<String, dynamic> data) {
+  final context = navigatorKey.currentContext;
+  if (context == null) {
+    debugPrint('No hay contexto de navegación disponible');
+    return;
+  }
+
+  final type = data['type'];
+  debugPrint('Navegando por notificación tipo: $type');
+
+  switch (type) {
+    case 'message':
+      final chatId = data['chatId'];
+      final otherUserId = data['otherUserId'];
+      final otherUserName = data['otherUserName'];
+      final otherUserAvatar = data['otherUserAvatar'];
+
+      if (chatId != null &&
+          otherUserId != null &&
+          otherUserName != null &&
+          otherUserAvatar != null) {
+        Navigator.of(context).pushNamed(
+          '/chat_detail',
+          arguments: {
+            'chatId': chatId,
+            'otherUserId': otherUserId,
+            'otherUserName': otherUserName,
+            'otherUserAvatar': otherUserAvatar,
+          },
+        );
+      }
+      break;
+    case 'like':
+    case 'comment':
+    case 'new_project':
+      final projectId = data['projectId'];
+      if (projectId != null) {
+        Navigator.of(
+          context,
+        ).pushNamed('/project_detail', arguments: projectId);
+      }
+      break;
+    case 'follow':
+      final userId = data['userId'];
+      if (userId != null) {
+        Navigator.of(context).pushNamed('/profile_view', arguments: userId);
+      }
+      break;
+    default:
+      Navigator.of(context).pushNamed('/notifications');
   }
 }

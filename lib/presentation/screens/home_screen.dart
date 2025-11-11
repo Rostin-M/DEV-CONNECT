@@ -271,7 +271,6 @@ class _HomeScreenState extends State<HomeScreen>
 
         var projects = snapshot.data?.docs ?? [];
 
-        // Filtrar por tag si hay uno seleccionado
         if (_selectedTag.isNotEmpty) {
           projects = projects.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
@@ -592,7 +591,15 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     try {
-      // Obtener datos del usuario actual
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
+        );
+      }
+
       final currentUserDoc = await _firestore
           .collection('users')
           .doc(currentUserId)
@@ -600,7 +607,6 @@ class _HomeScreenState extends State<HomeScreen>
 
       final currentUserData = currentUserDoc.data() ?? {};
 
-      // Obtener datos del otro usuario
       final otherUserDoc = await _firestore
           .collection('users')
           .doc(otherUserId)
@@ -622,20 +628,31 @@ class _HomeScreenState extends State<HomeScreen>
       );
 
       if (mounted) {
+        Navigator.pop(context);
+
         Navigator.pushNamed(
           context,
           '/chat_detail',
           arguments: {
             'chatId': chatId,
+            'otherUserId': otherUserId,
             'otherUserName': otherUserData['displayName'] ?? otherUserName,
+            'otherUserAvatar':
+                otherUserData['photoURL'] ??
+                ImageConstants.getDefaultAvatar(otherUserName),
           },
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error al iniciar chat: $e")));
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error al iniciar chat: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

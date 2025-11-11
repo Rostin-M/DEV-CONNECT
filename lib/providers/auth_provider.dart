@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dev_connect/services/fcm_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FCMService _fcmService = FCMService();
 
   User? _user;
   User? get user => _user;
@@ -23,8 +25,15 @@ class AuthProvider extends ChangeNotifier {
   StreamSubscription<User?>? _authStateSubscription;
 
   void _listenToAuthChanges() {
-    _authStateSubscription = _auth.authStateChanges().listen((User? user) {
+    _authStateSubscription = _auth.authStateChanges().listen((
+      User? user,
+    ) async {
       _user = user;
+
+      if (user != null) {
+        await _fcmService.saveFCMToken(user.uid);
+      }
+
       notifyListeners();
     });
   }
@@ -95,6 +104,7 @@ class AuthProvider extends ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'followersCount': 0,
+      'fcmToken': null,
     };
 
     await userRef.set(userData);
@@ -164,6 +174,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    if (_user != null) {
+      await _fcmService.deleteFCMToken(_user!.uid);
+    }
+
     await _auth.signOut();
     _user = null;
     notifyListeners();

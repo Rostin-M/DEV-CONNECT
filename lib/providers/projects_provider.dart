@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dev_connect/data/models/project_model.dart';
 import 'package:dev_connect/services/cloudinary_service.dart';
+import 'package:dev_connect/services/notification_service.dart';
 
 class ProjectsProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final CloudinaryService _cloudinaryService = CloudinaryService();
+  final NotificationService _notificationService = NotificationService();
 
   List<ProjectModel> _projects = [];
   bool _isLoading = false;
@@ -72,6 +74,13 @@ class ProjectsProvider extends ChangeNotifier {
       projectData['updatedAt'] = FieldValue.serverTimestamp();
 
       await projectRef.set(projectData);
+
+      await _notificationService.notifyNewProject(
+        authorId: project.authorId,
+        authorName: project.authorName,
+        projectId: projectRef.id,
+        projectTitle: project.title,
+      );
     } catch (e) {
       throw Exception('Fallo al crear el proyecto: ${e.toString()}');
     }

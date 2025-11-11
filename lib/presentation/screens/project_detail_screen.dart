@@ -9,6 +9,7 @@ import 'package:dev_connect/providers/auth_provider.dart';
 import 'package:dev_connect/providers/theme_provider.dart';
 import 'package:dev_connect/themes/app_theme.dart';
 import 'package:dev_connect/constants/image_constants.dart';
+import 'package:dev_connect/services/notification_service.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
@@ -90,9 +91,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Future<void> _toggleLike() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUserId = authProvider.user?.uid;
+    final currentUserName = authProvider.user?.displayName ?? 'Usuario';
 
     if (currentUserId == null || _project == null) return;
 
+    final wasLiked = _isLiked;
     setState(() => _isLiked = !_isLiked);
 
     try {
@@ -104,13 +107,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         await projectRef.update({
           'likes': FieldValue.arrayUnion([currentUserId]),
         });
+
+        if (_project!.authorId != currentUserId) {
+          await NotificationService().notifyNewLike(
+            recipientId: _project!.authorId,
+            likerName: currentUserName,
+            projectId: _project!.id,
+            projectTitle: _project!.title,
+          );
+        }
       } else {
         await projectRef.update({
           'likes': FieldValue.arrayRemove([currentUserId]),
         });
       }
     } catch (e) {
-      setState(() => _isLiked = !_isLiked);
+      setState(() => _isLiked = wasLiked);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -151,6 +163,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         'commentsCount': FieldValue.increment(1),
       });
 
+      if (_project != null && _project!.authorId != currentUser.uid) {
+        await NotificationService().notifyNewComment(
+          recipientId: _project!.authorId,
+          commenterName: currentUser.displayName ?? 'Usuario',
+          projectId: _project!.id,
+          projectTitle: _project!.title,
+        );
+      }
+
       _commentController.clear();
       await _loadProjectData();
 
@@ -169,11 +190,48 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Future<void> _openGitHub() async {
-    if (_project?.githubLink == null || _project!.githubLink.isEmpty) return;
+    if (_project?.githubLink == null || _project!.githubLink.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No hay enlace de GitHub disponible')),
+        );
+      }
+      return;
+    }
 
-    final uri = Uri.parse(_project!.githubLink);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final uri = Uri.parse(_project!.githubLink);
+
+      debugPrint('Intentando abrir URL: ${uri.toString()}');
+
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+
+        if (!launched && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se pudo abrir el enlace')),
+          );
+        }
+      } else {
+        debugPrint(' No se puede abrir la URL: $uri');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No se puede abrir: ${_project!.githubLink}'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint(' Error al abrir GitHub: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al abrir el enlace: $e')));
+      }
     }
   }
 
