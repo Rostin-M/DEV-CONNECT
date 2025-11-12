@@ -205,7 +205,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == currentUserId;
-                    return _buildMessageBubble(message, isMe, isDarkMode);
+
+                    final showDateSeparator = _shouldShowDateSeparator(
+                      messages,
+                      index,
+                    );
+
+                    return Column(
+                      children: [
+                        if (showDateSeparator)
+                          _buildDateSeparator(
+                            message.createdAt.toDate(),
+                            isDarkMode,
+                          ),
+                        _buildMessageBubble(message, isMe, isDarkMode),
+                      ],
+                    );
                   },
                 );
               },
@@ -213,6 +228,68 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
           _buildMessageInput(isDarkMode),
         ],
+      ),
+    );
+  }
+
+  bool _shouldShowDateSeparator(List<MessageModel> messages, int index) {
+    if (index == messages.length - 1) return true;
+
+    final currentMessage = messages[index];
+    final nextMessage = messages[index + 1];
+
+    final currentDate = currentMessage.createdAt.toDate();
+    final nextDate = nextMessage.createdAt.toDate();
+
+    return currentDate.year != nextDate.year ||
+        currentDate.month != nextDate.month ||
+        currentDate.day != nextDate.day;
+  }
+
+  Widget _buildDateSeparator(DateTime date, bool isDarkMode) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDate = DateTime(date.year, date.month, date.day);
+
+    String dateText;
+    if (messageDate == today) {
+      dateText = 'Hoy';
+    } else if (messageDate == yesterday) {
+      dateText = 'Ayer';
+    } else if (now.difference(date).inDays < 7) {
+      const weekDays = [
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado',
+        'Domingo',
+      ];
+      dateText = weekDays[date.weekday - 1];
+    } else {
+      dateText = '${date.day}/${date.month}/${date.year}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            dateText,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+            ),
+          ),
+        ),
       ),
     );
   }

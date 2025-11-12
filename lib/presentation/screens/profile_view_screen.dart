@@ -508,11 +508,23 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                       ),
                     ),
                     onSelected: (value) {
-                      if (value == 'delete') {
+                      if (value == 'edit') {
+                        _navigateToEditProject(context, project);
+                      } else if (value == 'delete') {
                         _showDeleteProjectDialog(context, project);
                       }
                     },
                     itemBuilder: (BuildContext context) => [
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text('Editar'),
+                          ],
+                        ),
+                      ),
                       const PopupMenuItem<String>(
                         value: 'delete',
                         child: Row(
@@ -562,6 +574,21 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
         );
       },
     );
+  }
+
+  Future<void> _navigateToEditProject(
+    BuildContext context,
+    Map<String, dynamic> project,
+  ) async {
+    final result = await Navigator.pushNamed(
+      context,
+      '/project_edit',
+      arguments: project['id'],
+    );
+
+    if (result == true && mounted) {
+      _loadUserProfile();
+    }
   }
 
   Future<void> _deleteProject(String projectId) async {

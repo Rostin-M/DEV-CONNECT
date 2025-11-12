@@ -22,6 +22,7 @@ import 'package:dev_connect/presentation/screens/project_create_screen.dart';
 import 'package:dev_connect/presentation/screens/profile_view_screen.dart';
 import 'package:dev_connect/presentation/screens/profile_edit_screen.dart';
 import 'package:dev_connect/presentation/screens/project_detail_screen.dart';
+import 'package:dev_connect/presentation/screens/project_edit_screen.dart';
 import 'package:dev_connect/presentation/screens/chat_detail_screen.dart';
 import 'package:dev_connect/presentation/screens/search_screen.dart';
 import 'package:dev_connect/presentation/screens/notifications_screen.dart';
@@ -112,6 +113,11 @@ class MyApp extends StatelessWidget {
                 final projectId = settings.arguments as String;
                 return MaterialPageRoute(
                   builder: (_) => ProjectDetailScreen(projectId: projectId),
+                );
+              case '/project_edit':
+                final projectId = settings.arguments as String;
+                return MaterialPageRoute(
+                  builder: (_) => ProjectEditScreen(projectId: projectId),
                 );
               case '/chat_detail':
                 final args = settings.arguments as Map<String, dynamic>;
