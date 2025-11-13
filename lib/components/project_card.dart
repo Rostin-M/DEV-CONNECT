@@ -21,7 +21,7 @@ class ProjectCard extends StatelessWidget {
     required this.onLikeToggle,
     required this.onShare,
     required this.onComment,
-    this.onDelete, // Nuevo parámetro opcional
+    this.onDelete,
   });
 
   @override
