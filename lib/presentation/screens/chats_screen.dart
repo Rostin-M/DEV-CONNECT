@@ -337,7 +337,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
   }
 }
 
-// Widget de búsqueda de usuarios
 class UserSearchDialog extends StatefulWidget {
   final String currentUserId;
 
@@ -398,7 +397,6 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
 
   Future<void> _startChat(String otherUserId, String otherUserName) async {
     try {
-      // Mostrar indicador de carga
       if (mounted) {
         showDialog(
           context: context,
@@ -434,8 +432,8 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Cerrar el loading
-        Navigator.pop(context); // Cerrar el diálogo de búsqueda
+        Navigator.pop(context);
+        Navigator.pop(context);
         Navigator.pushNamed(
           context,
           '/chat_detail',
@@ -449,7 +447,7 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Cerrar el loading
+        Navigator.pop(context);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -475,7 +473,6 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Handle bar
               Container(
                 width: 40,
                 height: 4,
@@ -485,7 +482,6 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // Título
               Text(
                 'Buscar usuarios',
                 style: Theme.of(
@@ -493,7 +489,6 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              // Campo de búsqueda
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -516,7 +511,6 @@ class _UserSearchDialogState extends State<UserSearchDialog> {
                 },
               ),
               const SizedBox(height: 16),
-              // Resultados
               Expanded(
                 child: _isSearching
                     ? const Center(child: CircularProgressIndicator())

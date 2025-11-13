@@ -11,7 +11,7 @@ class ProjectCard extends StatelessWidget {
   final VoidCallback onLikeToggle;
   final VoidCallback onShare;
   final VoidCallback onComment;
-  final VoidCallback? onDelete; // Nuevo parámetro opcional
+  final VoidCallback? onDelete;
 
   const ProjectCard({
     super.key,

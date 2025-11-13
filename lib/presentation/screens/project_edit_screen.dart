@@ -37,7 +37,7 @@ class _ProjectEditScreenState extends State<ProjectEditScreen> {
   final CloudinaryService _cloudinaryService = CloudinaryService();
 
   List<String> _tags = [];
-  List<ScreenshotData> _screenshots = [];
+  final List<ScreenshotData> _screenshots = [];
   List<Map<String, dynamic>> _existingScreenshots = [];
   bool _isLoading = true;
   bool _isSaving = false;
